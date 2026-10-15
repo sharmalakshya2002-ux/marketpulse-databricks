@@ -1,0 +1,50 @@
+
+-- MarketPulse: Stock Analytics Queries
+
+-- 1. Latest price and analytics for each stock
+WITH ranked AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY ticker
+               ORDER BY trade_date DESC
+           ) AS rn
+    FROM databricks_cert.marketpulse.gold_stock_analytics
+)
+SELECT
+    ticker,
+    trade_date,
+    close,
+    daily_return_pct,
+    moving_avg_7d,
+    moving_avg_30d,
+    volatility_30d_pct
+FROM ranked
+WHERE rn = 1
+ORDER BY ticker;
+
+-- 2. Average daily return by stock
+SELECT
+    ticker,
+    ROUND(AVG(daily_return_pct), 4) AS avg_daily_return_pct
+FROM databricks_cert.marketpulse.gold_stock_analytics
+GROUP BY ticker
+ORDER BY avg_daily_return_pct DESC;
+
+-- 3. Highest observed rolling volatility by stock
+SELECT
+    ticker,
+    ROUND(MAX(volatility_30d_pct), 4) AS max_rolling_volatility_pct
+FROM databricks_cert.marketpulse.gold_stock_analytics
+GROUP BY ticker
+ORDER BY max_rolling_volatility_pct DESC;
+
+-- 4. Largest daily price movements
+SELECT
+    ticker,
+    trade_date,
+    close,
+    ROUND(daily_return_pct, 2) AS daily_return_pct
+FROM databricks_cert.marketpulse.gold_stock_analytics
+WHERE daily_return_pct IS NOT NULL
+ORDER BY ABS(daily_return_pct) DESC
+LIMIT 20;
